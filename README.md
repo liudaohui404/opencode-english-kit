@@ -113,6 +113,42 @@ cd opencode-english-kit-main
 
 ---
 
+## 新设备上会发生什么
+
+装完之后的完整程度，取决于你传了哪些参数：
+
+| 情况 | 结果 |
+| --- | --- |
+| 只跑 `./install.sh` | 插件和规则都装好。`/dict` 会**联网兜底**（`dict.youdao.com/jsonapi`，实测 HTTP 200 可用），但拿到的是网页式释义，没有音标、英英解释和词形变化 |
+| 加 `--with-dict` | `/dict` 变成完整的离线词卡（340 万词条，327 MB） |
+| 加 `--key sk-xxx` | `/zh` 用你自己的模型，质量最好 |
+| 不加 `--key` | `/zh` 走免费链路（有道 → MyMemory → 离线逐词） |
+
+**为什么词典和 key 不在仓库里**：词典 327 MB，超过 GitHub 单文件 100 MB 限制；key 是凭据，
+不该进版本库。两者都是「装的时候生成」，所以仓库本身很小（约 120 KB）。
+
+### 前置要求
+
+| 需要 | 用途 | 备注 |
+| --- | --- | --- |
+| OpenCode | 运行插件 | 必须 |
+| `node`、`bun`、`python3` 之一 | 合并 `cli.json` | 三者都没有时脚本会打印需要手工添加的那一行 |
+| `bun` + `unzip` | 只会被 `--with-dict` 用到 | 构建离线词典 |
+
+注意：OpenCode 官方安装脚本装的是独立二进制，**不保证**机器上有 node 或 bun，
+所以脚本额外支持 `python3` 作为兜底（`node`/`bun` 用 `scripts/merge-cli.mjs`，
+`python3` 用 `scripts/merge-cli.py`，两者输出完全一致，已对比验证）。
+
+### 最短路径
+
+```bash
+git clone https://github.com/<you>/opencode-english-kit.git
+cd opencode-english-kit
+./install.sh --with-dict --key YOUR_KEY     # 换个 key 就是一次性的
+```
+
+---
+
 ## 翻译 key（可选）
 
 不放 key 也能用：`/dict` 完全离线，`/zh` 会走免费链路（有道 → MyMemory → 离线逐词）。

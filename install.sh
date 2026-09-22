@@ -59,9 +59,15 @@ else
   say "warning: 'opencode' is not on PATH. Install OpenCode first, then re-run."
 fi
 RUNNER=""
+MERGER=""
 for candidate in node bun; do
-  if command -v "$candidate" >/dev/null 2>&1; then RUNNER="$candidate"; break; fi
+  if command -v "$candidate" >/dev/null 2>&1; then
+    RUNNER="$candidate"; MERGER="$REPO_DIR/scripts/merge-cli.mjs"; break
+  fi
 done
+if [ -z "$RUNNER" ] && command -v python3 >/dev/null 2>&1; then
+  RUNNER="python3"; MERGER="$REPO_DIR/scripts/merge-cli.py"
+fi
 say "json merge: ${RUNNER:-(none found)}"
 say "bun:        $(command -v bun >/dev/null 2>&1 && command -v bun || echo '(not found)')"
 
@@ -107,9 +113,9 @@ place "$SRC/plugins/lookup" "$CONFIG_DIR/plugins/lookup"
 
 step "Registering the plugin in cli.json"
 if [ -n "$RUNNER" ]; then
-  "$RUNNER" "$REPO_DIR/scripts/merge-cli.mjs" "$CONFIG_DIR/cli.json"
+  "$RUNNER" "$MERGER" "$CONFIG_DIR/cli.json"
 else
-  say "neither node nor bun found; add this entry by hand:"
+  say "no node, bun, or python3 found; add this entry to cli.json by hand:"
   say '  { "package": "./plugins/lookup", "options": {} }'
 fi
 
