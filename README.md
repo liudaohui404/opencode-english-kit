@@ -60,7 +60,7 @@ cd opencode-english-kit-main
 
 ### 安装脚本做了什么
 
-1. 把文件放进 `~/.config/opencode/`（默认用软链接，`git pull` 后立即生效）；
+1. 把文件**复制**进 `~/.config/opencode/`（默认复制，安装后与仓库相互独立）；
 2. 把 `./plugins/lookup` 合并进 `cli.json`，不动其它设置；
 3. 把被覆盖的旧文件移到 `~/.config/opencode/.backup-<时间戳>/`；
 4. 提示你录入 API key（可选）；
@@ -70,7 +70,7 @@ cd opencode-english-kit-main
 
 | 参数 | 作用 |
 | --- | --- |
-| `--copy` | 复制文件而不是软链接 |
+| `--link` | 改用软链接安装（`git pull` 后立即生效，但仓库不能删） |
 | `--with-dict` | 同时构建 327 MB 离线词典（下载约 207 MB 压缩包，需要 `bun` 和 `unzip`） |
 | `--key sk-xxx` | 写入翻译 key（等价于环境变量 `OPENCODE_LOOKUP_KEY`） |
 | `--config-dir DIR` | 装到别的目录，方便先试一遍 |
@@ -78,26 +78,33 @@ cd opencode-english-kit-main
 
 ### 已验证
 
-在全新配置目录里完整跑过一遍（用 `--config-dir` 隔离，不影响本机配置）：
+**文件层面**（用 `--config-dir` 装进临时目录，不碰本机配置）：
 
-- 插件通过**软链接**能被 OpenCode 正常加载，`/dict`、`/d`、`/word` 都出现在命令面板里；
-- `/dict ubiquitous` 正常弹出词卡，鼠标点击 `✕ 关闭` 可以关闭；
-- 合并 `cli.json` 时不会破坏已有的插件条目；
-- 被覆盖的旧 `AGENTS.md` 会移进 `.backup-<时间戳>/`；
+- 合并 `cli.json` 不会破坏已有插件条目；空目录会自动创建 `cli.json`；
+- 被覆盖的旧文件会移进 `.backup-<时间戳>/`；
+- `--copy` 产出的文件与仓库 `diff -r` 完全一致；
+- 软链接装完后改用 `--copy` 能正确切换（旧链接被移进备份目录）；
+- 重复执行 copy 安装提示 `up to date`，不再产生备份；
 - 54 个测试全部通过。
 
-**本机实测（安装到真实的 `~/.config/opencode`）**，重点验证软链接方式：
+**界面层面**（只能装在真实的 `~/.config/opencode` 上测）：
+
+> 踩坑记录：临时配置目录**不能**用来做界面测试。OpenCode 的后台服务持有配置，
+> 设置 `XDG_CONFIG_HOME` 并不生效。实测时我在临时目录里放了一个只存在于该目录的探针命令，
+> TUI 里显示 "No matching commands" —— 证明它读的一直是真实配置。
+> 也就是说，只靠临时目录测出来的「插件能加载」是无效结论。
 
 | 项目 | 结果 |
 | --- | --- |
 | 插件从软链接加载 | 通过，`/dict` 正常出卡片 |
+| 插件从复制目录加载 | 通过，`/dict` 正常出卡片 |
 | `/zh` 联网链路 | 通过 |
-| `/word` 命令文件（软链接） | 通过，命令面板可见 |
+| `/word` 命令文件 | 通过，命令面板可见 |
 | 鼠标点 `✕ 关闭` | 卡片关闭 |
 | 文件内容 | md5 与仓库一致，`diff -r` 无差异 |
-| 重复执行 install.sh | 提示 `already linked`，不再产生备份 |
-| `--copy` 模式（空目录、无 cli.json） | 通过，自动创建 cli.json |
+| 重复执行 install.sh | 链接模式提示 `already linked`，不再产生备份 |
 | `cli.json` 其它设置 | 主题、tabs、stock symbols 全部保留 |
+| 装完后修改仓库 | 实际配置不受影响（复制模式已解耦） |
 | 词典构建（`bun build-db.ts`） | 11 秒生成 3,402,564 条 / 327,118,848 字节，用插件自身的查询代码验证可查 |
 | ECDICT 下载地址 | 可访问（206 分片，PK 压缩包头，约 207 MB） |
 
@@ -187,8 +194,13 @@ opencode-english-kit/
 **`/zh` 走的哪个通道？**
 配置了 key 就用 key，否则用免费接口，全失败则退到离线逐词翻译（卡片标题会说明）。
 
-**软链接和复制怎么选？**
-软链接（默认）适合「只在这一台机器上维护、`git pull` 即生效」；复制适合「装完就把仓库删掉」。
+**复制还是软链接？**
+默认是**复制**：装完之后 `~/.config/opencode` 与仓库没有任何关系，删掉仓库也不会影响 OpenCode。
+代价是仓库更新后要重新执行一次 `./install.sh`。
+想要「`git pull` 即生效」就用 `--link`，但那样仓库不能删、也不能移走。
+
+两种模式可以随时互相切换，`./install.sh` 和 `./install.sh --link` 各跑一次即可；
+被换掉的旧文件都会先移进 `.backup-<时间戳>/`。
 
 **卸载？**
 删掉 `~/.config/opencode/plugins/lookup`、`~/.config/opencode/commands/word.md`，

@@ -7,24 +7,26 @@
 #   2. the reply-style rules    — AGENTS.md (English replies with Chinese glosses)
 #
 # Usage:
-#   ./install.sh                    symlink the files into ~/.config/opencode
-#   ./install.sh --copy             copy the files instead of symlinking
+#   ./install.sh                    copy the files into ~/.config/opencode
+#   ./install.sh --link             symlink them instead (updates via git pull)
 #   ./install.sh --with-dict        also build the offline dictionary (~327 MB)
 #   ./install.sh --key sk-xxxx      store your translation API key
 #   ./install.sh --config-dir DIR   install somewhere else (for testing)
 #
+# The default is copy mode: the installed files are independent of this repo,
+# so deleting or moving the repo cannot break your OpenCode config.
 # Anything it replaces is first moved to ~/.config/opencode/.backup-<timestamp>/.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="$REPO_DIR/opencode"
 CONFIG_DIR="${OPENCODE_CONFIG_DIR:-$HOME/.config/opencode}"
-MODE="link"
+MODE="copy"
 WITH_DICT=0
 KEY="${OPENCODE_LOOKUP_KEY:-}"
 
 usage() {
-  sed -n '3,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '3,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   exit 0
 }
 
@@ -69,11 +71,22 @@ mkdir -p "$CONFIG_DIR/commands" "$CONFIG_DIR/plugins"
 
 place() {
   local src="$1" dst="$2"
-  if [ -L "$dst" ] && [ "$(readlink -f "$dst")" = "$(readlink -f "$src")" ]; then
+  if [ "$MODE" = "link" ] && [ -L "$dst" ] && [ "$(readlink -f "$dst")" = "$(readlink -f "$src")" ]; then
     say "already linked: $dst"
     return
   fi
-  if [ -e "$dst" ]; then
+  # copy mode: skip when the installed copy already matches, so re-running is safe
+  if [ "$MODE" = "copy" ] && [ -e "$dst" ] && [ ! -L "$dst" ]; then
+    if [ -d "$src" ] && diff -r "$src" "$dst" >/dev/null 2>&1; then
+      say "up to date: $dst"
+      return
+    fi
+    if [ -f "$src" ] && cmp -s "$src" "$dst"; then
+      say "up to date: $dst"
+      return
+    fi
+  fi
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
     mkdir -p "$BACKUP"
     mv "$dst" "$BACKUP/$(basename "$dst")"
     say "backed up: $dst"
