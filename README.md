@@ -53,10 +53,12 @@ cd opencode-english-kit
 如果新设备也访问不了 `github.com`，改用 API 拉取：
 
 ```bash
-gh api /repos/<you>/opencode-english-kit/tarball/main | tar xz
-cd opencode-english-kit-main
+gh api /repos/<you>/opencode-english-kit/tarball/HEAD | tar xz
+cd liudaohui404-opencode-english-kit-*      # 目录名带着提交号
 ./install.sh --with-dict
 ```
+
+> 分支名是 `master`。`gh api .../tarball/main` 会返回 404，用 `HEAD` 最稳。
 
 > Windows 用户不用 `install.sh`（需要 bash）。见下面的 [Windows](#windows) 一节，改用 `install.ps1`。
 
