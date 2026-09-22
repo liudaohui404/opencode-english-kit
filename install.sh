@@ -122,7 +122,7 @@ if [ -f "$DB" ]; then
 elif [ "$WITH_DICT" = "1" ]; then
   command -v bun >/dev/null 2>&1 || die "--with-dict needs bun (https://bun.sh)"
   command -v unzip >/dev/null 2>&1 || die "--with-dict needs unzip"
-  say "building $DB — this downloads ~850 MB and takes a few minutes"
+  say "building $DB — this downloads a ~207 MB archive, unpacks it, and takes a few minutes"
   ( cd "$SRC/plugins/lookup" && bun build-db.ts )
   say "built: $DB ($(du -h "$DB" | cut -f1))"
 else

@@ -71,7 +71,7 @@ cd opencode-english-kit-main
 | 参数 | 作用 |
 | --- | --- |
 | `--copy` | 复制文件而不是软链接 |
-| `--with-dict` | 同时构建 327 MB 离线词典（下载约 850 MB，需要 `bun` 和 `unzip`） |
+| `--with-dict` | 同时构建 327 MB 离线词典（下载约 207 MB 压缩包，需要 `bun` 和 `unzip`） |
 | `--key sk-xxx` | 写入翻译 key（等价于环境变量 `OPENCODE_LOOKUP_KEY`） |
 | `--config-dir DIR` | 装到别的目录，方便先试一遍 |
 | `-h` | 查看帮助 |
@@ -85,6 +85,24 @@ cd opencode-english-kit-main
 - 合并 `cli.json` 时不会破坏已有的插件条目；
 - 被覆盖的旧 `AGENTS.md` 会移进 `.backup-<时间戳>/`；
 - 54 个测试全部通过。
+
+**本机实测（安装到真实的 `~/.config/opencode`）**，重点验证软链接方式：
+
+| 项目 | 结果 |
+| --- | --- |
+| 插件从软链接加载 | 通过，`/dict` 正常出卡片 |
+| `/zh` 联网链路 | 通过 |
+| `/word` 命令文件（软链接） | 通过，命令面板可见 |
+| 鼠标点 `✕ 关闭` | 卡片关闭 |
+| 文件内容 | md5 与仓库一致，`diff -r` 无差异 |
+| 重复执行 install.sh | 提示 `already linked`，不再产生备份 |
+| `--copy` 模式（空目录、无 cli.json） | 通过，自动创建 cli.json |
+| `cli.json` 其它设置 | 主题、tabs、stock symbols 全部保留 |
+| 词典构建（`bun build-db.ts`） | 11 秒生成 3,402,564 条 / 327,118,848 字节，用插件自身的查询代码验证可查 |
+| ECDICT 下载地址 | 可访问（206 分片，PK 压缩包头，约 207 MB） |
+
+**未完整验证**：ECDICT 压缩包的「完整下载 + 解压」一次性流程。测试时机器温度过高被主动中止，
+但下载地址、解压工具、构建步骤、查询结果都单独验证过了。
 
 ---
 
