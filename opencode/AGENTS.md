@@ -35,5 +35,6 @@
 
 ## Word questions
 
-When the user asks what a word or phrase means, read
-`~/.config/opencode/commands/word.md` and answer in that format.
+When the user asks what a word or phrase means, answer in the format defined by the
+`/word` command: 中文意思, then 词性 / 音标, then a simple English definition, then
+one example sentence with its Chinese translation.

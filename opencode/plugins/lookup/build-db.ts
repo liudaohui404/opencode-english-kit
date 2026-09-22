@@ -13,15 +13,18 @@
  */
 import { Database } from "bun:sqlite"
 import { existsSync, mkdirSync } from "node:fs"
-import { homedir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
+import { extractArchive } from "./extract"
 
 const VERSION = "1.0.28"
 const MIRROR = "https://gh-proxy.com/"
 const ASSET = `https://github.com/skywind3000/ECDICT/releases/download/${VERSION}/ecdict-sqlite-28.zip`
-const WORK = "/tmp/opencode/ecdict-build"
+/** Build cache. Override with OPENCODE_LOOKUP_WORK. */
+const WORK = process.env.OPENCODE_LOOKUP_WORK || join(tmpdir(), "opencode", "ecdict-build")
 const OUT = process.env.OPENCODE_LOOKUP_DB || join(homedir(), ".local", "share", "lookup", "dict.db")
 
+/** Downloads ECDICT through the mirror, or reuses the cached copy. */
 async function resolveSource(): Promise<string> {
   const given = process.argv[2]
   if (given) {
@@ -36,8 +39,7 @@ async function resolveSource(): Promise<string> {
   const response = await fetch(MIRROR + ASSET)
   if (!response.ok) throw new Error(`download failed: HTTP ${response.status}`)
   await Bun.write(zip, response)
-  const unzip = Bun.spawnSync(["unzip", "-o", zip, "-d", WORK])
-  if (unzip.exitCode !== 0) throw new Error(`unzip failed: ${unzip.stderr.toString()}`)
+  console.log(`unpacked with ${extractArchive(zip, WORK)}`)
   if (!existsSync(db)) throw new Error("the archive did not contain stardict.db")
   return db
 }

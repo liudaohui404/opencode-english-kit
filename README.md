@@ -58,6 +58,8 @@ cd opencode-english-kit-main
 ./install.sh --with-dict
 ```
 
+> Windows 用户不用 `install.sh`（需要 bash）。见下面的 [Windows](#windows) 一节，改用 `install.ps1`。
+
 ### 安装脚本做了什么
 
 1. 把文件**复制**进 `~/.config/opencode/`（默认复制，安装后与仓库相互独立）；
@@ -149,6 +151,58 @@ cd opencode-english-kit
 
 ---
 
+## Windows
+
+Windows 没有 bash，也没有 `unzip`，所以另有一个 PowerShell 安装脚本：
+
+```powershell
+git clone https://github.com/<you>/opencode-english-kit.git
+cd opencode-english-kit
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -WithDict
+```
+
+参数和 `install.sh` 对应：`-WithDict`、`-Key sk-xxx`、`-Link`、`-ConfigDir DIR`。
+
+配置目录是 `%USERPROFILE%\.config\opencode`。
+这是官方文档给出的 Windows 路径，**不是** `%APPDATA%`。
+
+三处平台差异已经处理：
+
+| 差异 | 处理方式 |
+| --- | --- |
+| 没有 `unzip` | `build-db.ts` 依次尝试 `unzip` → `tar`（Win10+ 自带 bsdtar，能读 zip）→ `Expand-Archive` |
+| 没有 `chmod 600` | 改用 `icacls` 去掉继承权限，只保留当前用户；失败时只提示不中断 |
+| 软链接需要开发者模式或管理员 | `-Link` 失败会自动退回复制，不让安装中断 |
+
+### 已验证
+
+开发机是 Linux，所以用 PowerShell Core 7.4.6 跑了逻辑测试：
+
+| 项目 | 结果 |
+| --- | --- |
+| 语法解析 | 通过 |
+| 空目录安装 | 通过，自动创建 `cli.json` |
+| 重复执行 | 通过，提示 `up to date` / `already linked`，不产生备份 |
+| 已有 `cli.json`（含其它插件） | 通过，`theme` 与 stock-monitor 条目都保留 |
+| 覆盖已有 `AGENTS.md` | 通过，旧文件进 `.backup-<时间戳>\` |
+| `-Key` | 通过；`icacls` 不存在时降级为提示 |
+| `-Link` | 通过，重复执行提示 `already linked` |
+
+**未验证**：真实的 Windows 机器、`icacls` 的实际效果、`Expand-Archive` 分支。
+
+### 手工安装
+
+不想跑脚本的话，五个步骤：
+
+1. 复制 `opencode\AGENTS.md` → `%USERPROFILE%\.config\opencode\AGENTS.md`
+2. 复制 `opencode\commands\word.md` → `%USERPROFILE%\.config\opencode\commands\word.md`
+3. 复制 `opencode\plugins\lookup` 整个目录 → `%USERPROFILE%\.config\opencode\plugins\lookup`
+4. 在 `%USERPROFILE%\.config\opencode\cli.json` 的 `plugins` 数组里加一项：
+   `{ "package": "./plugins/lookup", "options": {} }`
+5. 重建词典（可选）：进入 `%USERPROFILE%\.config\opencode\plugins\lookup`，运行 `bun build-db.ts`
+
+---
+
 ## 翻译 key（可选）
 
 不放 key 也能用：`/dict` 完全离线，`/zh` 会走免费链路（有道 → MyMemory → 离线逐词）。
@@ -204,9 +258,11 @@ bun build-db.ts /path/to/stardict.db         # 用本地已有的 ECDICT 文件
 
 ```text
 opencode-english-kit/
-├── install.sh               一键安装
+├── install.sh               一键安装（Linux / macOS / WSL）
+├── install.ps1              一键安装（Windows PowerShell）
 ├── publish.sh               通过 API 推送到私有仓库
-├── scripts/merge-cli.mjs    安全合并 cli.json
+├── scripts/merge-cli.mjs    安全合并 cli.json（node / bun）
+├── scripts/merge-cli.py     同上（python3 兜底）
 ├── .gitignore               排除密钥与词典
 ├── opencode/                要安装到 ~/.config/opencode 的内容
 └── README.md
