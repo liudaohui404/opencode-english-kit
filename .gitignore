@@ -1,0 +1,17 @@
+# Secrets — never commit these
+lookup.key
+service.json
+.env
+.env.*
+*.pem
+*.key
+
+# Local data
+*.db
+*.sqlite
+*.sqlite3
+
+# Tooling
+node_modules/
+.DS_Store
+*.log
