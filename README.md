@@ -76,6 +76,16 @@ cd opencode-english-kit-main
 | `--config-dir DIR` | 装到别的目录，方便先试一遍 |
 | `-h` | 查看帮助 |
 
+### 已验证
+
+在全新配置目录里完整跑过一遍（用 `--config-dir` 隔离，不影响本机配置）：
+
+- 插件通过**软链接**能被 OpenCode 正常加载，`/dict`、`/d`、`/word` 都出现在命令面板里；
+- `/dict ubiquitous` 正常弹出词卡，鼠标点击 `✕ 关闭` 可以关闭；
+- 合并 `cli.json` 时不会破坏已有的插件条目；
+- 被覆盖的旧 `AGENTS.md` 会移进 `.backup-<时间戳>/`；
+- 54 个测试全部通过。
+
 ---
 
 ## 翻译 key（可选）
