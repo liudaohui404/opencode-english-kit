@@ -244,24 +244,24 @@ bun build-db.ts /path/to/stardict.db         # 用本地已有的 ECDICT 文件
 
 ```bash
 ./publish.sh --dry-run     # 先看要传哪些文件
-./publish.sh               # 真正上传（仓库为 public）
+./publish.sh               # 推送（仓库为 public）
 ./publish.sh --private     # 想改回私有就用这个
 ```
 
-仓库默认是 **public**，所以上传前的密钥扫描是最后一道防线：只要有任何文件命中你的
-真实凭据（`lookup.key` 的值、`service.json` 里的 password），整次上传会直接中止。
-另外脚本还会拒绝上传名为 `lookup.key`、`service.json`、`.env`、`*.db` 的文件。
+脚本按这个顺序工作：
 
-脚本走 GitHub REST API（`gh api`），不是 `git push`。原因是部分网络下 `github.com:443`
-不通，但 `api.github.com` 正常。仓库已存在时，脚本会先读当前可见性，和目标不一致才修改。
+1. **密钥扫描**：任何文件命中你的真实凭据（`lookup.key` 的值、`service.json` 里的 password）
+   就整次中止；同时拒绝名为 `lookup.key`、`service.json`、`.env`、`*.db` 的文件。
+2. **确认仓库**：不存在就用 `gh` 创建，可见性和目标不一致才修改。
+3. **优先 `git push`**：保留真实的本地提交历史，一次推送就是一个操作。
+   只有 `github.com` 访问不了时才回退到 REST API 逐文件上传 —— 那条路每个文件一个提交，
+   历史会很长，所以只当兜底（脚本会明确警告）。
 
-> 如果以后网络恢复正常，也可以直接用 git：
-> `git init && git add . && git commit -m init && git remote add origin git@github.com:<you>/opencode-english-kit.git && git push -u origin main`
->
-> 小提示：本仓库的**本地**提交作者是 `liushifu <13297039225@163.com>`。
-> `publish.sh` 走 API，不会把这些本地提交推上去（API 提交记在你的 GitHub 账号名下）。
-> 但如果你以后改用 `git push`，这个邮箱会随提交公开。介意的话先改掉：
-> `git config user.email "you@users.noreply.github.com"` 然后重写历史。
+仓库默认是 **public**。
+
+> 提交身份统一为 `liudaohui404 <liudaohui404@users.noreply.github.com>`，
+> 私人邮箱不会进入公开仓库。
+> 手工用 git 的话：`git push -u origin master`。
 
 ---
 

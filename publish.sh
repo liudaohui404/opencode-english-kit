@@ -101,6 +101,7 @@ say "clean: ${#SECRETS[@]} known credential(s) checked, none present"
 if [ "$DRY" = "1" ]; then
   step "Dry run — would upload"
   for file in "${FILES[@]}"; do say "$file"; done
+  say "push method: git push if github.com answers, otherwise the REST API"
   exit 0
 fi
 
@@ -134,7 +135,33 @@ if [ "$VISIBILITY" = "public" ]; then
   say "note: this repository is PUBLIC — the files listed above become visible to anyone."
 fi
 
-step "Uploading"
+# Preferred path: a normal git push. It keeps the real local history, and one
+# push is one operation instead of one API commit per file.
+step "Pushing with git"
+REMOTE_URL="https://github.com/$OWNER/$REPO_NAME.git"
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  if git remote get-url origin >/dev/null 2>&1; then
+    git remote set-url origin "$REMOTE_URL"
+  else
+    git remote add origin "$REMOTE_URL"
+  fi
+  BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+  say "remote: origin -> $REMOTE_URL"
+  say "branch: $BRANCH ($(git rev-list --count HEAD) commit(s))"
+  if git push --force --set-upstream origin "$BRANCH"; then
+    step "Done"
+    say "https://github.com/$OWNER/$REPO_NAME"
+    say "On a new device:"
+    say "  git clone $REMOTE_URL && cd $REPO_NAME && ./install.sh --with-dict"
+    exit 0
+  fi
+  say "warning: git push failed (github.com blocked?) — falling back to the REST API"
+  say "warning: the API writes one commit per file, so history will be long."
+else
+  say "warning: this folder is not a git repository — using the REST API instead"
+fi
+
+step "Uploading through the REST API"
 for file in "${FILES[@]}"; do
   sha="$(gh api "repos/$OWNER/$REPO_NAME/contents/$file" --jq .sha 2>/dev/null || true)"
   args=(-X PUT "repos/$OWNER/$REPO_NAME/contents/$file"
@@ -146,7 +173,9 @@ done
 
 step "Done"
 say "https://github.com/$OWNER/$REPO_NAME"
+say "Uploaded through the API. Run this again from a machine with normal access"
+say "to github.com so the history collapses into one git push."
 say "On a new device:"
-say "  git clone https://github.com/$OWNER/$REPO_NAME.git && cd $REPO_NAME && ./install.sh --with-dict"
+say "  git clone $REMOTE_URL && cd $REPO_NAME && ./install.sh --with-dict"
 say "  # blocked network:"
-say "  gh api /repos/$OWNER/$REPO_NAME/tarball/main | tar xz && ./install.sh --with-dict"
+say "  gh api /repos/$OWNER/$REPO_NAME/tarball/$BRANCH | tar xz && ./install.sh --with-dict"
