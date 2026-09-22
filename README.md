@@ -244,13 +244,24 @@ bun build-db.ts /path/to/stardict.db         # 用本地已有的 ECDICT 文件
 
 ```bash
 ./publish.sh --dry-run     # 先看要传哪些文件
-./publish.sh               # 真正上传
+./publish.sh               # 真正上传（仓库为 public）
+./publish.sh --private     # 想改回私有就用这个
 ```
 
-脚本走 GitHub REST API（`gh api`），不是 `git push`。原因是部分网络下 `github.com:443` 不通，但 `api.github.com` 正常。上传前会做密钥扫描。
+仓库默认是 **public**，所以上传前的密钥扫描是最后一道防线：只要有任何文件命中你的
+真实凭据（`lookup.key` 的值、`service.json` 里的 password），整次上传会直接中止。
+另外脚本还会拒绝上传名为 `lookup.key`、`service.json`、`.env`、`*.db` 的文件。
+
+脚本走 GitHub REST API（`gh api`），不是 `git push`。原因是部分网络下 `github.com:443`
+不通，但 `api.github.com` 正常。仓库已存在时，脚本会先读当前可见性，和目标不一致才修改。
 
 > 如果以后网络恢复正常，也可以直接用 git：
 > `git init && git add . && git commit -m init && git remote add origin git@github.com:<you>/opencode-english-kit.git && git push -u origin main`
+>
+> 小提示：本仓库的**本地**提交作者是 `liushifu <13297039225@163.com>`。
+> `publish.sh` 走 API，不会把这些本地提交推上去（API 提交记在你的 GitHub 账号名下）。
+> 但如果你以后改用 `git push`，这个邮箱会随提交公开。介意的话先改掉：
+> `git config user.email "you@users.noreply.github.com"` 然后重写历史。
 
 ---
 
@@ -260,7 +271,7 @@ bun build-db.ts /path/to/stardict.db         # 用本地已有的 ECDICT 文件
 opencode-english-kit/
 ├── install.sh               一键安装（Linux / macOS / WSL）
 ├── install.ps1              一键安装（Windows PowerShell）
-├── publish.sh               通过 API 推送到私有仓库
+├── publish.sh               通过 API 推送到 GitHub（默认 public）
 ├── scripts/merge-cli.mjs    安全合并 cli.json（node / bun）
 ├── scripts/merge-cli.py     同上（python3 兜底）
 ├── .gitignore               排除密钥与词典

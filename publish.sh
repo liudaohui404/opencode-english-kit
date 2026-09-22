@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 #
-# Publishes this folder to a PRIVATE GitHub repository through the REST API.
+# Publishes this folder to a GitHub repository through the REST API.
 #
-#   ./publish.sh                 create/update <you>/opencode-english-kit
+#   ./publish.sh                 create/update <you>/opencode-english-kit (public)
 #   ./publish.sh another-name    use a different repository name
+#   ./publish.sh --private       make it private instead of public
 #   ./publish.sh --dry-run       list what would be uploaded, upload nothing
+#
+# The repository is PUBLIC by default, so the secret scan below is the last line
+# of defence: any file matching your live credentials stops the whole upload.
 #
 # Why the API and not `git push`: on some networks github.com:443 is blocked
 # while api.github.com still answers. `git push` fails there, `gh api` works.
@@ -15,16 +19,33 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_DIR"
 
 REPO_NAME="opencode-english-kit"
+VISIBILITY="public"
 DRY=0
 
 usage() {
-  sed -n '3,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  cat <<'USAGE'
+Publishes this folder to a GitHub repository through the REST API.
+
+  ./publish.sh                 create/update <you>/opencode-english-kit (public)
+  ./publish.sh another-name    use a different repository name
+  ./publish.sh --private       make it private instead of public
+  ./publish.sh --dry-run       list what would be uploaded, upload nothing
+
+The repository is PUBLIC by default, so the secret scan is the last line of
+defence: any file matching your live credentials stops the whole upload.
+
+Why the API and not `git push`: on some networks github.com:443 is blocked
+while api.github.com still answers. `git push` fails there, `gh api` works.
+Requirements: the `gh` CLI, logged in with the `repo` scope.
+USAGE
   exit 0
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY=1 ;;
+    --public) VISIBILITY="public" ;;
+    --private) VISIBILITY="private" ;;
     -h|--help) usage ;;
     -*) echo "unknown option: $1" >&2; usage ;;
     *) REPO_NAME="$1" ;;
@@ -84,13 +105,33 @@ if [ "$DRY" = "1" ]; then
 fi
 
 step "Ensuring the repository exists"
+set_visibility() {
+  # Newer gh requires an extra flag for visibility changes; older gh rejects it.
+  if gh repo edit "$OWNER/$REPO_NAME" --visibility "$1" \
+       --accept-visibility-change-consequences >/dev/null 2>&1; then
+    return 0
+  fi
+  gh repo edit "$OWNER/$REPO_NAME" --visibility "$1" >/dev/null
+}
+
 if gh api "repos/$OWNER/$REPO_NAME" >/dev/null 2>&1; then
-  say "exists, updating"
+  current="$(gh api "repos/$OWNER/$REPO_NAME" --jq .visibility)"
+  if [ "$current" = "$VISIBILITY" ]; then
+    say "exists, visibility: $current"
+  else
+    say "exists, visibility: $current -> $VISIBILITY"
+    set_visibility "$VISIBILITY"
+    say "visibility changed"
+  fi
 else
-  gh repo create "$OWNER/$REPO_NAME" --private \
+  gh repo create "$OWNER/$REPO_NAME" "--$VISIBILITY" \
     --description "Offline word cards, Chinese translation cards, and English reply rules for OpenCode" \
     >/dev/null
-  say "created a private repository"
+  say "created a $VISIBILITY repository"
+fi
+
+if [ "$VISIBILITY" = "public" ]; then
+  say "note: this repository is PUBLIC — the files listed above become visible to anyone."
 fi
 
 step "Uploading"
